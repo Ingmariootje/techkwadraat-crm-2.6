@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Techkwadraat CRM</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="logo">
+        <span class="logo-mark">TQ</span>
+        <span>Techkwadraat CRM</span>
+      </div>
+
+      <nav>
+        <button class="nav-link active" data-view="dashboard">Dashboard</button>
+        <button class="nav-link" data-view="agenda">Agenda</button>
+        <button class="nav-link" data-view="scholen">Scholen</button>
+        <button class="nav-link" data-view="bedrijven">Bedrijven</button>
+        <button class="nav-link" data-view="instellingen">Instellingen</button>
+        <button class="nav-link" data-view="team">Team</button>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <div class="page-header">
+        <div>
+          <h1 id="page-title"></h1>
+          <p id="page-subtitle" class="page-subtitle"></p>
+        </div>
+        <div id="page-actions"></div>
+      </div>
+
+      <div id="app-view"></div>
+    </main>
+  </div>
+
+  <div id="modal-root"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/views/dashboard.js"></script>
+  <script src="js/views/agenda.js"></script>
+  <script src="js/views/relaties.js"></script>
+  <script src="js/views/team.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
