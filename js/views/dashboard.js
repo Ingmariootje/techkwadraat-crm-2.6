@@ -13,8 +13,11 @@ function renderDashboard(state) {
   const nextWeekAppointments = appointmentsInRange(state.appointments, nextWeekRange.start, nextWeekRange.end);
 
   const importantNotes = state.notes.slice(0, 12);
+  const openAccountability = getOpenAccountabilityAppointments();
 
   return `
+    ${openAccountability.length ? renderAccountabilityTaskPanel(openAccountability) : ""}
+
     <section class="dashboard-three-column">
       <div class="panel week-panel dashboard-week-card">
         <div class="week-panel-header">
@@ -44,7 +47,7 @@ function renderDashboard(state) {
         <div class="notes-priority-header">
           <div>
             <div class="panel-header">Laatste notities en contactmomenten</div>
-            </div>
+          </div>
         </div>
         <div class="priority-note-list">
           ${importantNotes.map(note => renderPriorityNote(note)).join("") || emptyText("Nog geen notities.")}
@@ -73,6 +76,34 @@ function dashboardEvent(appointment) {
         <span class="event-label ${activityClass(appointment.activity_type)}">${escapeHtml(appointment.activity_type)}</span>
       </div>
     </div>
+  `;
+}
+
+
+
+function renderAccountabilityTaskPanel(items) {
+  return `
+    <section class="panel accountability-task-panel">
+      <div class="accountability-task-header">
+        <div>
+          <div class="panel-header">⚠ Openstaande verantwoording (${items.length})</div>
+          <p class="page-subtitle">Activiteiten van de afgelopen 30 dagen waarbij kinderen of leerkrachten nog niet zijn ingevuld.</p>
+        </div>
+        <button type="button" class="secondary" onclick="setView('rapportages')">Naar rapportages</button>
+      </div>
+      <div class="accountability-task-list">
+        ${items.slice(0, 6).map(item => `
+          <article class="accountability-task-row">
+            <div>
+              <strong>${escapeHtml(item.title)}</strong>
+              <p>${formatDate(item.date)} · ${escapeHtml(getOrganizationName(item.organization_id))}</p>
+            </div>
+            <button type="button" class="small-button" onclick="openAccountabilityModal('${item.id}')">Invullen</button>
+          </article>
+        `).join("")}
+        ${items.length > 6 ? `<button type="button" class="ghost accountability-more-button" onclick="openAccountabilityReminderModal()">Nog ${items.length - 6} bekijken</button>` : ""}
+      </div>
+    </section>
   `;
 }
 

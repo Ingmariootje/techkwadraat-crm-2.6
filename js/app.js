@@ -7,11 +7,13 @@ const state = {
   team: [],
   appointments: [],
   notes: [],
+  documents: [],
+  contactMoments: [],
   selectedDate: new Date().toISOString().slice(0, 10),
   calendarMonth: new Date(),
   search: "",
   relationCityFilter: "alles",
-  relationFoundationFilter: "alles"
+  relationFoundationFilter: "alles",
 };
 
 const views = {
@@ -20,26 +22,33 @@ const views = {
   scholen: { title: "Scholen", subtitle: "Schoolrelaties, activiteiten en notities.", render: s => renderRelaties(s, "school") },
   bedrijven: { title: "Bedrijven", subtitle: "Bedrijfspartners en bedrijfsbezoeken.", render: s => renderRelaties(s, "bedrijf") },
   instellingen: { title: "Instellingen", subtitle: "Partners zoals bibliotheek, museum en andere instellingen.", render: s => renderRelaties(s, "instelling") },
-  team: { title: "Team", subtitle: "Teamleden, werkdagen en gekoppelde activiteiten.", render: renderTeam }
+  team: { title: "Team", subtitle: "Teamleden, werkdagen en gekoppelde activiteiten.", render: renderTeam },
+  rapportages: { title: "Rapportages", subtitle: "Verantwoording per school, klaar om te printen of te mailen.", render: renderRapportages }
 };
 
 async function loadData() {
-  const [organizations, team, appointments, notes] = await Promise.all([
+  const [organizations, team, appointments, notes, documents, contactMoments] = await Promise.all([
     db.from("organizations").select("*").order("name", { ascending: true }),
     db.from("team_members").select("*").order("name", { ascending: true }),
     db.from("appointments").select("*").order("date", { ascending: true }),
-    db.from("notes").select("*").order("created_at", { ascending: false })
+    db.from("notes").select("*").order("created_at", { ascending: false }),
+    db.from("documents").select("*").order("created_at", { ascending: false }),
+    db.from("contact_moments").select("*").order("contact_date", { ascending: false })
   ]);
 
   if (organizations.error) console.error(organizations.error);
   if (team.error) console.error(team.error);
   if (appointments.error) console.error(appointments.error);
   if (notes.error) console.error(notes.error);
+  if (documents.error) console.warn("Documenten zijn nog niet actief. Voer eerst het SQL-script uit.", documents.error);
+  if (contactMoments.error) console.warn("Contactgeschiedenis is nog niet actief. Voer eerst het SQL-script uit.", contactMoments.error);
 
   state.organizations = organizations.data || [];
   state.team = team.data || [];
   state.appointments = appointments.data || [];
   state.notes = notes.data || [];
+  state.documents = documents.data || [];
+  state.contactMoments = contactMoments.data || [];
 }
 
 async function refresh() {
@@ -49,16 +58,10 @@ async function refresh() {
 
 function render() {
   const view = views[state.view];
-
   document.getElementById("page-title").textContent = view.title;
   document.getElementById("page-subtitle").textContent = view.subtitle;
   document.getElementById("page-actions").innerHTML = renderPageActions();
-
-  document.querySelector(".page-header").classList.toggle(
-    "is-empty",
-    !view.title && !view.subtitle && !renderPageActions()
-  );
-
+  document.querySelector(".page-header").classList.toggle("is-empty", !view.title && !view.subtitle && !renderPageActions());
   document.getElementById("app-view").innerHTML = view.render(state);
   bindViewActions();
 }
@@ -67,19 +70,16 @@ function renderPageActions() {
   switch (state.view) {
     case "agenda":
       return `<button type="button" onclick="openAppointmentModal(state.selectedDate)">+ Activiteit</button>`;
-
     case "scholen":
       return `<button type="button" onclick="openRelationModal('school')">+ School</button>`;
-
     case "bedrijven":
       return `<button type="button" onclick="openRelationModal('bedrijf')">+ Bedrijf</button>`;
-
     case "instellingen":
       return `<button type="button" onclick="openRelationModal('instelling')">+ Instelling</button>`;
-
     case "team":
       return `<button type="button" onclick="openTeamModal()">+ Teamlid</button>`;
-
+    case "rapportages":
+      return `<button type="button" onclick="window.print()">Print rapportage</button>`;
     default:
       return "";
   }
@@ -92,11 +92,9 @@ function setView(viewName) {
   state.search = "";
   state.relationCityFilter = "alles";
   state.relationFoundationFilter = "alles";
-
   document.querySelectorAll(".nav-link").forEach(button => {
     button.classList.toggle("active", button.dataset.view === viewName);
   });
-
   render();
 }
 
@@ -110,6 +108,7 @@ function bindViewActions() {
   if (state.view === "agenda") bindAgendaActions();
   if (["scholen", "bedrijven", "instellingen"].includes(state.view)) bindRelatieActions();
   if (state.view === "team") bindTeamActions();
+  if (state.view === "rapportages") bindRapportageActions();
 }
 
 function viewToType(viewName) {
@@ -130,16 +129,16 @@ function typeLabel(type) {
   return "instelling";
 }
 
-function typeLabelCapital(type) {
-  if (type === "school") return "School";
-  if (type === "bedrijf") return "Bedrijf";
-  return "Instelling";
-}
-
 function typePluralLabel(type) {
   if (type === "school") return "scholen";
   if (type === "bedrijf") return "bedrijven";
   return "instellingen";
+}
+
+function typeLabelCapital(type) {
+  if (type === "school") return "School";
+  if (type === "bedrijf") return "Bedrijf";
+  return "Instelling";
 }
 
 function phoneHref(phone) {
@@ -153,10 +152,7 @@ function getOrganizationName(id) {
 
 function getTeamNames(ids) {
   const selected = Array.isArray(ids) ? ids : [];
-  return state.team
-    .filter(member => selected.includes(member.id))
-    .map(member => member.name)
-    .join(", ");
+  return state.team.filter(member => selected.includes(member.id)).map(member => member.name).join(", ");
 }
 
 function cleanTime(value) {
@@ -166,31 +162,20 @@ function cleanTime(value) {
 
 function formatDate(dateString) {
   if (!dateString) return "-";
-  return new Date(`${dateString}T12:00:00`).toLocaleDateString("nl-NL", {
-    weekday: "short",
-    day: "numeric",
-    month: "short"
-  });
+  return new Date(`${dateString}T12:00:00`).toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" });
 }
 
 function formatDateLong(dateString) {
   if (!dateString) return "-";
-  return new Date(`${dateString}T12:00:00`).toLocaleDateString("nl-NL", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-  });
+  return new Date(`${dateString}T12:00:00`).toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
 function activityClass(type) {
   const value = String(type || "").toLowerCase();
-
   if (value.includes("bus")) return "event-bus";
   if (value.includes("techhub")) return "event-techhub";
   if (value.includes("gast")) return "event-gastles";
   if (value.includes("bedrijf")) return "event-bedrijf";
-
   return "event-techhub";
 }
 
@@ -203,6 +188,14 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function safeFileName(value) {
+  return String(value || "document")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 function openModal(html) {
   document.getElementById("modal-root").innerHTML = html;
 }
@@ -211,86 +204,109 @@ function closeModal() {
   document.getElementById("modal-root").innerHTML = "";
 }
 
-function openRelationModal(type) {
-  const label = typeLabelCapital(type);
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function isPastAppointment(appointment) {
+  return appointment.date < todayKey();
+}
+
+function daysBetweenTodayAndAppointment(appointment) {
+  if (!appointment.date) return null;
+  const today = new Date(`${todayKey()}T12:00:00`);
+  const date = new Date(`${appointment.date}T12:00:00`);
+  return Math.floor((today - date) / 86400000);
+}
+
+function needsAccountability(appointment) {
+  const childrenMissing = appointment.participant_children === null || appointment.participant_children === undefined || appointment.participant_children === "";
+  const teachersMissing = appointment.participant_teachers === null || appointment.participant_teachers === undefined || appointment.participant_teachers === "";
+  const ageInDays = daysBetweenTodayAndAppointment(appointment);
+
+  return ageInDays !== null &&
+    ageInDays >= 1 &&
+    ageInDays <= 30 &&
+    (childrenMissing || teachersMissing);
+}
+
+function getOpenAccountabilityAppointments() {
+  return state.appointments
+    .filter(needsAccountability)
+    .sort((a, b) => `${a.date} ${a.start_time || ""}`.localeCompare(`${b.date} ${b.start_time || ""}`));
+}
+
+function accountabilitySummary(appointment) {
+  const children = appointment.participant_children ?? "-";
+  const teachers = appointment.participant_teachers ?? "-";
+  return `${children} kinderen · ${teachers} leerkrachten`;
+}
+
+function openAccountabilityReminderModal() {
+  const openItems = getOpenAccountabilityAppointments();
 
   openModal(`
-    <div class="modal-backdrop" onclick="closeModal()">
-      <div class="modal large-modal" onclick="event.stopPropagation()">
+    <div class="modal-backdrop">
+      <div class="modal modal-wide accountability-modal">
         <div class="modal-header">
           <div>
-            <h2>+ ${label}</h2>
-            <p>Nieuwe ${typeLabel(type)} toevoegen aan Techkwadraat CRM.</p>
+            <h2>Openstaande verantwoording</h2>
+            <p class="page-subtitle">Alleen activiteiten van de afgelopen 30 dagen die nog aantallen missen.</p>
           </div>
-          <button type="button" class="secondary" onclick="closeModal()">Sluiten</button>
+          <button type="button" class="close-button" onclick="closeModal()">×</button>
         </div>
+        <div class="modal-content">
+          ${openItems.length ? openItems.map(item => `
+            <article class="accountability-reminder-row">
+              <div>
+                <strong>${escapeHtml(item.title)}</strong>
+                <p>${formatDate(item.date)} · ${cleanTime(item.start_time)} - ${cleanTime(item.end_time)} · ${escapeHtml(getOrganizationName(item.organization_id))}</p>
+              </div>
+              <button type="button" onclick="openAccountabilityModal('${item.id}')">Invullen</button>
+            </article>
+          `).join("") : `<p class="empty">Geen openstaande verantwoording.</p>`}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="ghost" onclick="closeModal()">Sluiten</button>
+          <button type="button" onclick="setView('rapportages'); closeModal();">Naar rapportages</button>
+        </div>
+      </div>
+    </div>
+  `);
+}
 
-        <form id="relation-create-form" class="form-grid">
-          <input type="hidden" name="type" value="${type}">
+function openAccountabilityModal(appointmentId) {
+  const appointment = state.appointments.find(item => item.id === appointmentId);
+  if (!appointment) return;
 
-          <label>
-            Naam
-            <input name="name" class="form-input" required placeholder="Naam ${typeLabel(type)}">
-          </label>
-
-          <label>
-            Contactpersoon
-            <input name="contact_person" class="form-input" placeholder="Naam contactpersoon">
-          </label>
-
-          ${
-            type === "school"
-              ? `
-                <label>
-                  Directeur
-                  <input name="director" class="form-input" placeholder="Naam directeur">
-                </label>
-              `
-              : `
-                <label>
-                  Directeur / leidinggevende
-                  <input name="director" class="form-input" placeholder="Optioneel">
-                </label>
-              `
-          }
-
-          <label>
-            Telefoon
-            <input name="phone" class="form-input" placeholder="06-12345678">
-          </label>
-
-          <label>
-            E-mail
-            <input name="email" class="form-input" placeholder="naam@organisatie.nl">
-          </label>
-
-          <label>
-            Plaats
-            <input name="city" class="form-input" placeholder="Bijvoorbeeld Tilburg">
-          </label>
-
-          ${
-            type === "school"
-              ? `
-                <label>
-                  Stichting
-                  <input name="foundation" class="form-input" placeholder="Bijvoorbeeld Xpect013">
-                </label>
-              `
-              : `
-                <label>
-                  Stichting / koepel
-                  <input name="foundation" class="form-input" placeholder="Optioneel">
-                </label>
-              `
-          }
-
-          <label class="full">
-            Adres
-            <input name="address" class="form-input" placeholder="Straat, huisnummer, plaats">
-          </label>
-
-          <div class="full modal-actions">
+  openModal(`
+    <div class="modal-backdrop">
+      <div class="modal">
+        <div class="modal-header">
+          <div>
+            <h2>Verantwoording invullen</h2>
+            <p class="page-subtitle">${escapeHtml(appointment.title)} · ${formatDateLong(appointment.date)}</p>
+          </div>
+          <button type="button" class="close-button" onclick="closeModal()">×</button>
+        </div>
+        <form id="accountability-form">
+          <div class="modal-content form-grid">
+            <div class="full accountability-context">
+              <strong>${escapeHtml(getOrganizationName(appointment.organization_id))}</strong><br>
+              ${cleanTime(appointment.start_time)} - ${cleanTime(appointment.end_time)} · ${escapeHtml(appointment.activity_type || "Activiteit")}
+            </div>
+            <label>
+              Aantal kinderen
+              <input name="participant_children" type="number" min="0" step="1" class="form-input" value="${appointment.participant_children ?? ""}" placeholder="Bijvoorbeeld 24" required>
+            </label>
+            <label>
+              Aantal leerkrachten
+              <input name="participant_teachers" type="number" min="0" step="1" class="form-input" value="${appointment.participant_teachers ?? ""}" placeholder="Bijvoorbeeld 2" required>
+            </label>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="ghost" onclick="closeModal()">Annuleren</button>
             <button type="submit">Opslaan</button>
           </div>
         </form>
@@ -298,34 +314,19 @@ function openRelationModal(type) {
     </div>
   `);
 
-  const form = document.getElementById("relation-create-form");
-
-  form.addEventListener("submit", async event => {
+  document.getElementById("accountability-form").addEventListener("submit", async event => {
     event.preventDefault();
-
-    const formData = new FormData(form);
-
+    const formData = new FormData(event.target);
     const payload = {
-      type: formData.get("type"),
-      name: String(formData.get("name") || "").trim(),
-      contact_person: String(formData.get("contact_person") || "").trim() || null,
-      director: String(formData.get("director") || "").trim() || null,
-      phone: String(formData.get("phone") || "").trim() || null,
-      email: String(formData.get("email") || "").trim() || null,
-      address: String(formData.get("address") || "").trim() || null,
-      city: String(formData.get("city") || "").trim() || null,
-      foundation: String(formData.get("foundation") || "").trim() || null,
-      status: "nieuw"
+      participant_children: Number(formData.get("participant_children")),
+      participant_teachers: Number(formData.get("participant_teachers"))
     };
-
-    const { error } = await db.from("organizations").insert(payload);
-
+    const { error } = await db.from("appointments").update(payload).eq("id", appointmentId);
     if (error) {
-      alert(`${label} toevoegen mislukt.`);
+      alert("Verantwoording opslaan mislukt. Controleer of het Supabase SQL-script is uitgevoerd.");
       console.error(error);
       return;
     }
-
     closeModal();
     await refresh();
   });
@@ -333,80 +334,31 @@ function openRelationModal(type) {
 
 function openTeamModal() {
   openModal(`
-    <div class="modal-backdrop" onclick="closeModal()">
-      <div class="modal large-modal" onclick="event.stopPropagation()">
-        <div class="modal-header">
-          <div>
-            <h2>+ Teamlid</h2>
-            <p>Nieuw teamlid toevoegen.</p>
-          </div>
-          <button type="button" class="secondary" onclick="closeModal()">Sluiten</button>
-        </div>
+    <div class="modal-backdrop"><div class="modal">
+      <div class="modal-header"><div><h2>Nieuw teamlid</h2><p class="page-subtitle">Teamlid toevoegen.</p></div><button type="button" class="close-button" onclick="closeModal()">×</button></div>
+      <form id="team-form"><div class="modal-content form-grid">
+        <input name="name" class="form-input full" placeholder="Naam" required>
+        <input name="role" class="form-input" placeholder="Functie">
+        <input name="email" class="form-input" placeholder="E-mail">
+        <input name="phone" class="form-input" placeholder="Telefoon">
+        <input name="workdays" class="form-input full" placeholder="Werkdagen, bijvoorbeeld: maandag, dinsdag, woensdag">
+      </div><div class="modal-footer"><button type="button" class="ghost" onclick="closeModal()">Annuleren</button><button type="submit">Opslaan</button></div></form>
+    </div></div>`);
 
-        <form id="team-create-form" class="form-grid">
-          <label>
-            Naam
-            <input name="name" class="form-input" required placeholder="Naam teamlid">
-          </label>
-
-          <label>
-            Functie
-            <input name="role" class="form-input" placeholder="Bijvoorbeeld Techcoach">
-          </label>
-
-          <label>
-            E-mail
-            <input name="email" class="form-input" placeholder="naam@techkwadraat.nl">
-          </label>
-
-          <label>
-            Telefoon
-            <input name="phone" class="form-input" placeholder="06-12345678">
-          </label>
-
-          <fieldset class="full checkbox-group">
-            <legend>Werkdagen</legend>
-
-            <label><input type="checkbox" name="workdays" value="maandag"> Maandag</label>
-            <label><input type="checkbox" name="workdays" value="dinsdag"> Dinsdag</label>
-            <label><input type="checkbox" name="workdays" value="woensdag"> Woensdag</label>
-            <label><input type="checkbox" name="workdays" value="donderdag"> Donderdag</label>
-            <label><input type="checkbox" name="workdays" value="vrijdag"> Vrijdag</label>
-          </fieldset>
-
-          <div class="full modal-actions">
-            <button type="submit">Opslaan</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  `);
-
-  const form = document.getElementById("team-create-form");
-
-  form.addEventListener("submit", async event => {
+  document.getElementById("team-form").addEventListener("submit", async event => {
     event.preventDefault();
-
-    const formData = new FormData(form);
-
+    const formData = new FormData(event.target);
+    const workdays = String(formData.get("workdays") || "").split(",").map(day => day.trim()).filter(Boolean);
     const payload = {
-      name: String(formData.get("name") || "").trim(),
-      role: String(formData.get("role") || "").trim() || null,
-      email: String(formData.get("email") || "").trim() || null,
-      phone: String(formData.get("phone") || "").trim() || null,
-      workdays: formData.getAll("workdays")
+      name: formData.get("name"),
+      role: formData.get("role"),
+      email: formData.get("email"),
+      phone: formData.get("phone"),
+      workdays
     };
-
     const { error } = await db.from("team_members").insert(payload);
-
-    if (error) {
-      alert("Teamlid toevoegen mislukt.");
-      console.error(error);
-      return;
-    }
-
-    closeModal();
-    await refresh();
+    if (error) { alert("Teamlid toevoegen mislukt."); console.error(error); return; }
+    closeModal(); await refresh();
   });
 }
 

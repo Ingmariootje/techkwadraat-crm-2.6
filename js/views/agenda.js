@@ -47,26 +47,47 @@ function renderAgenda(state) {
 
 function renderCalendarEvent(item) {
   const teamNames = getTeamNames(item.team_member_ids);
+  const missing = needsAccountability(item);
+  const filled = isPastAppointment(item) && !missing;
+
   return `
-    <div class="calendar-event calendar-event-rich ${activityClass(item.activity_type)}">
+    <div class="calendar-event calendar-event-rich ${activityClass(item.activity_type)} ${missing ? "calendar-accountability-missing" : ""}">
       <div class="calendar-event-time">${cleanTime(item.start_time)} - ${cleanTime(item.end_time)}</div>
       <strong>${escapeHtml(item.title)}</strong>
       <span>${escapeHtml(getOrganizationName(item.organization_id))}</span>
       ${teamNames ? `<small>${escapeHtml(teamNames)}</small>` : ""}
+      ${missing ? `<small class="calendar-accountability-label">🔴 Verantwoording ontbreekt</small>` : ""}
+      ${filled ? `<small class="calendar-accountability-label done">🟢 Verantwoording compleet</small>` : ""}
     </div>`;
 }
 
 function renderAgendaItem(item) {
   const teamNames = getTeamNames(item.team_member_ids);
+  const missing = needsAccountability(item);
+  const filled = isPastAppointment(item) && !missing;
+
   return `
-    <div class="agenda-item">
+    <div class="agenda-item ${missing ? "accountability-missing" : ""}">
       <strong>${escapeHtml(item.title)}</strong>
       <span>${cleanTime(item.start_time)} - ${cleanTime(item.end_time)}</span><br>
       <span>${getOrganizationName(item.organization_id)}</span><br>
       ${teamNames ? `<span>Team: ${teamNames}</span><br>` : ""}
       <span class="event-label ${activityClass(item.activity_type)}">${escapeHtml(item.activity_type)}</span>
       ${item.notes ? `<p class="card-meta">${escapeHtml(item.notes)}</p>` : ""}
-      <div class="card-actions"><button class="danger small-button" onclick="deleteRecord('appointments', '${item.id}')">Verwijderen</button></div>
+
+      ${missing ? `
+        <div class="accountability-warning">
+          Verantwoording ontbreekt
+          <button type="button" class="small-button" onclick="openAccountabilityModal('${item.id}')">Nu invullen</button>
+        </div>
+      ` : ""}
+
+      ${filled ? `<p class="accountability-done">Verantwoording: ${accountabilitySummary(item)}</p>` : ""}
+
+      <div class="card-actions">
+        <button type="button" class="ghost small-button" onclick="openAccountabilityModal('${item.id}')">Verantwoording</button>
+        <button class="danger small-button" onclick="deleteRecord('appointments', '${item.id}')">Verwijderen</button>
+      </div>
     </div>`;
 }
 
@@ -95,7 +116,7 @@ function openAppointmentModal(date = state.selectedDate) {
         <div class="modal-content day-modal-layout">
           <section class="day-overview-panel">
             <h3>Deze dag</h3>
-            ${dayAppointments.map(item => `<div class="agenda-item day-overview-item"><strong>${escapeHtml(item.title)}</strong><span>${cleanTime(item.start_time)} - ${cleanTime(item.end_time)}</span><br><span>${escapeHtml(getOrganizationName(item.organization_id))}</span><br>${getTeamNames(item.team_member_ids) ? `<span>${escapeHtml(getTeamNames(item.team_member_ids))}</span>` : ""}</div>`).join("") || `<p class="empty">Nog geen activiteiten op deze dag.</p>`}
+            ${dayAppointments.map(item => `<div class="agenda-item day-overview-item ${needsAccountability(item) ? "accountability-missing" : ""}"><strong>${escapeHtml(item.title)}</strong><span>${cleanTime(item.start_time)} - ${cleanTime(item.end_time)}</span><br><span>${escapeHtml(getOrganizationName(item.organization_id))}</span><br>${getTeamNames(item.team_member_ids) ? `<span>${escapeHtml(getTeamNames(item.team_member_ids))}</span>` : ""}${needsAccountability(item) ? `<br><button type="button" class="small-button" onclick="openAccountabilityModal('${item.id}')">Verantwoording invullen</button>` : ""}</div>`).join("") || `<p class="empty">Nog geen activiteiten op deze dag.</p>`}
           </section>
 
           <form id="appointment-form" class="appointment-form-panel">
@@ -116,6 +137,7 @@ function openAppointmentModal(date = state.selectedDate) {
               <div class="full suggestion-row">${suggestions.map(s => `<button type="button" class="suggestion-chip" data-activity="${s}">${s}</button>`).join("")}</div>
               <div class="full"><p class="page-subtitle" style="margin-bottom:10px;">Teamleden</p><div class="team-chip-list">${state.team.map(member => `<button type="button" class="team-chip" data-team-id="${member.id}">${escapeHtml(member.name)}</button>`).join("")}</div></div>
               <textarea name="notes" class="full" placeholder="Notities"></textarea>
+              <p class="full accountability-help">Aantallen kinderen en leerkrachten vul je achteraf in via de knop Verantwoording.</p>
             </div>
             <div class="modal-footer inline-footer"><button type="button" class="ghost" onclick="closeModal()">Annuleren</button><button type="submit">Activiteit opslaan</button></div>
           </form>

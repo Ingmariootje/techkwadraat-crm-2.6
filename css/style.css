@@ -841,3 +841,506 @@ textarea { min-height: 110px; resize: vertical; }
     grid-template-columns: 1fr;
   }
 }
+
+/* Versie 2.7: documenten en contactgeschiedenis */
+.relation-kpi-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.stacked-action-row {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.side-section-title {
+  margin: 18px 0 8px;
+  color: var(--blue);
+  font-weight: 900;
+}
+
+.contact-row-small {
+  padding: 14px !important;
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+}
+
+.contact-row-small .note-text strong {
+  color: var(--blue);
+}
+
+.contact-moment-card h3 {
+  margin: 6px 0 10px;
+  color: var(--blue);
+}
+
+.contact-moment-card p {
+  line-height: 1.55;
+}
+
+.document-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.document-card {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 16px;
+  background: #fbfcff;
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--blue);
+  border-radius: 16px;
+  padding: 18px;
+}
+
+.document-card h3 {
+  color: var(--blue);
+  margin-bottom: 6px;
+}
+
+.document-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 15px;
+  background: #e8f0ff;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+}
+
+.document-row-small {
+  display: grid;
+  gap: 4px;
+  background: #fbfcff;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--blue);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.document-row-small strong {
+  color: var(--blue);
+}
+
+.document-row-small span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.document-row-small a,
+.document-card a.button {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+}
+
+@media (max-width: 1100px) {
+  .relation-kpi-grid,
+  .document-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Versie 2.8: rechterkolom opgesplitst + compactere activiteiten */
+.relation-side-panel {
+  display: grid;
+  gap: 22px;
+}
+
+.side-block {
+  display: grid;
+  gap: 12px;
+}
+
+.side-block-separated {
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+
+.side-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.side-block-header .panel-header {
+  margin-bottom: 4px;
+}
+
+.side-action-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.compact-activity-list {
+  display: grid;
+  gap: 10px;
+}
+
+.relation-activity-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 16px;
+  border-radius: 14px;
+  background: var(--soft);
+  border-left: 5px solid var(--orange);
+}
+
+.relation-activity-date strong,
+.relation-activity-main strong {
+  display: block;
+  color: var(--blue);
+  margin-bottom: 4px;
+}
+
+.relation-activity-date span,
+.relation-activity-main span {
+  display: block;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .relation-activity-row {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+}
+
+/* Verantwoording / rapportages */
+.accountability-warning {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  font-weight: 800;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.accountability-missing {
+  box-shadow: inset 0 0 0 2px #f59e0b;
+  background: #fffaf2;
+}
+
+.accountability-done {
+  margin-top: 10px;
+  color: #166534;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.accountability-help {
+  color: var(--muted);
+  font-weight: 700;
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.accountability-context {
+  background: #f9fafb;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  line-height: 1.5;
+}
+
+.accountability-reminder-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fffaf2;
+  margin-bottom: 12px;
+}
+
+.accountability-reminder-row p {
+  color: var(--muted);
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.accountability-dashboard-card {
+  border: 2px solid #f59e0b;
+  background: #fffaf2;
+}
+
+.accountability-summary-card {
+  margin: 18px 0;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: #f9fafb;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
+.accountability-summary-card.has-missing {
+  background: #fffaf2;
+  border-color: #f59e0b;
+}
+
+.accountability-summary-card p {
+  color: var(--muted);
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.accountability-complete {
+  color: #166534;
+  font-weight: 900;
+}
+
+.relation-activity-main em {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 800;
+}
+
+.relation-activity-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.report-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 22px;
+  align-items: start;
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+  margin-bottom: 22px;
+}
+
+.report-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.report-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.kpi-warning {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+}
+
+.report-table-wrap {
+  overflow-x: auto;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.report-table th,
+.report-table td {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.report-table th {
+  color: var(--muted);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.report-row-warning {
+  background: #fffaf2;
+}
+
+.report-open-item {
+  display: block;
+  width: 100%;
+  background: #fffaf2;
+  color: var(--text);
+  text-align: left;
+  border: 1px solid #fed7aa;
+  margin-bottom: 10px;
+}
+
+.report-open-item span {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media print {
+  .sidebar,
+  .page-header,
+  .report-side-panel,
+  .report-actions,
+  #modal-root {
+    display: none !important;
+  }
+
+  .app {
+    display: block;
+  }
+
+  .content {
+    padding: 0;
+  }
+
+  .panel {
+    box-shadow: none;
+    border: none;
+  }
+
+  .report-layout {
+    display: block;
+  }
+}
+
+@media (max-width: 1100px) {
+  .report-layout,
+  .report-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .accountability-reminder-row,
+  .accountability-summary-card,
+  .report-header {
+    display: block;
+  }
+}
+
+/* Versie 3.0: openstaande verantwoording als vaste takenlijst */
+.accountability-task-panel {
+  margin-bottom: 22px;
+  border: 2px solid #f59e0b;
+  background: #fffaf2;
+}
+
+.accountability-task-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.accountability-task-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.accountability-task-row {
+  background: white;
+  border: 1px solid #fed7aa;
+  border-left: 6px solid #f28c28;
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.accountability-task-row strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.accountability-task-row p {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.accountability-more-button {
+  min-height: 72px;
+}
+
+.calendar-accountability-missing {
+  border-left: 5px solid #ef4444;
+}
+
+.calendar-accountability-label {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  font-weight: 900;
+  color: #991b1b;
+  white-space: normal;
+}
+
+.calendar-accountability-label.done {
+  color: #166534;
+}
+
+.relation-open-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.relation-open-action {
+  background: white;
+  color: #9a3412;
+  border: 1px solid #fed7aa;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+@media (max-width: 1200px) {
+  .accountability-task-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .accountability-task-header,
+  .accountability-task-row {
+    display: grid;
+  }
+
+  .accountability-task-list {
+    grid-template-columns: 1fr;
+  }
+}
