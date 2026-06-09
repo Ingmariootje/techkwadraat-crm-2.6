@@ -7,7 +7,34 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div class="app">
+  <section id="login-screen" class="login-screen">
+    <div class="login-card">
+      <div class="login-logo">
+        <span class="logo-mark">TQ</span>
+        <div>
+          <h1>Techkwadraat CRM</h1>
+          <p>Log in om verder te gaan.</p>
+        </div>
+      </div>
+
+      <form id="login-form" class="login-form">
+        <label>
+          E-mailadres
+          <input id="login-email" type="email" autocomplete="email" required placeholder="naam@organisatie.nl">
+        </label>
+
+        <label>
+          Wachtwoord
+          <input id="login-password" type="password" autocomplete="current-password" required placeholder="Wachtwoord">
+        </label>
+
+        <button type="submit">Inloggen</button>
+        <p id="login-error" class="login-error"></p>
+      </form>
+    </div>
+  </section>
+
+  <div id="crm-app" class="app app-hidden">
     <aside class="sidebar">
       <div class="logo">
         <span class="logo-mark">TQ</span>
@@ -23,6 +50,12 @@
         <button class="nav-link" data-view="team">Team</button>
         <button class="nav-link" data-view="rapportages">Rapportages</button>
       </nav>
+
+      <div class="sidebar-user">
+        <span id="user-email"></span>
+        <button type="button" class="password-button" onclick="openPasswordModal()">Wachtwoord wijzigen</button>
+        <button type="button" class="logout-button" onclick="logout()">Uitloggen</button>
+      </div>
     </aside>
 
     <main class="content">

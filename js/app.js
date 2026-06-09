@@ -1,5 +1,6 @@
 const state = {
   view: "dashboard",
+  currentUser: null,
   relationType: null,
   selectedRelationId: null,
   selectedRelationSection: null,
@@ -377,9 +378,133 @@ async function deleteRecord(table, id) {
   await refresh();
 }
 
+function showLoginScreen() {
+  document.getElementById("login-screen").classList.remove("app-hidden");
+  document.getElementById("crm-app").classList.add("app-hidden");
+}
+
+function showCrmApp() {
+  document.getElementById("login-screen").classList.add("app-hidden");
+  document.getElementById("crm-app").classList.remove("app-hidden");
+
+  const userEmail = document.getElementById("user-email");
+  if (userEmail) userEmail.textContent = state.currentUser?.email || "Ingelogd";
+}
+
+function bindLoginForm() {
+  const form = document.getElementById("login-form");
+  if (!form) return;
+
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const email = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value;
+    const errorElement = document.getElementById("login-error");
+    const button = form.querySelector("button[type='submit']");
+
+    errorElement.textContent = "";
+    button.disabled = true;
+    button.textContent = "Inloggen...";
+
+    const { data, error } = await db.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    button.disabled = false;
+    button.textContent = "Inloggen";
+
+    if (error) {
+      errorElement.textContent = "Inloggen mislukt. Controleer e-mailadres en wachtwoord.";
+      console.error(error);
+      return;
+    }
+
+    state.currentUser = data.user;
+    showCrmApp();
+    await refresh();
+  });
+}
+
+
+function openPasswordModal() {
+  openModal(`
+    <div class="modal-backdrop"><div class="modal">
+      <div class="modal-header"><div><h2>Wachtwoord wijzigen</h2><p class="page-subtitle">Kies een nieuw wachtwoord voor je CRM-account.</p></div><button type="button" class="close-button" onclick="closeModal()">×</button></div>
+      <form id="password-form"><div class="modal-content form-grid">
+        <label class="full">Nieuw wachtwoord
+          <input id="new-password" name="password" type="password" class="form-input" autocomplete="new-password" minlength="8" required placeholder="Minimaal 8 tekens">
+        </label>
+        <label class="full">Herhaal nieuw wachtwoord
+          <input id="repeat-password" name="repeat_password" type="password" class="form-input" autocomplete="new-password" minlength="8" required placeholder="Herhaal wachtwoord">
+        </label>
+        <p id="password-error" class="login-error full"></p>
+      </div><div class="modal-footer"><button type="button" class="ghost" onclick="closeModal()">Annuleren</button><button type="submit">Wachtwoord opslaan</button></div></form>
+    </div></div>`);
+
+  document.getElementById("password-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const password = document.getElementById("new-password").value;
+    const repeatPassword = document.getElementById("repeat-password").value;
+    const errorElement = document.getElementById("password-error");
+    const button = event.target.querySelector("button[type='submit']");
+
+    errorElement.textContent = "";
+
+    if (password !== repeatPassword) {
+      errorElement.textContent = "De wachtwoorden zijn niet gelijk.";
+      return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Opslaan...";
+
+    const { error } = await db.auth.updateUser({ password });
+
+    button.disabled = false;
+    button.textContent = "Wachtwoord opslaan";
+
+    if (error) {
+      errorElement.textContent = "Wachtwoord wijzigen mislukt. Kies eventueel een sterker wachtwoord.";
+      console.error(error);
+      return;
+    }
+
+    closeModal();
+    alert("Wachtwoord gewijzigd.");
+  });
+}
+
+async function logout() {
+  await db.auth.signOut();
+  state.currentUser = null;
+  showLoginScreen();
+}
+
 async function init() {
+  bindLoginForm();
   bindNavigation();
+
+  const { data, error } = await db.auth.getSession();
+  if (error) console.error(error);
+
+  if (!data.session?.user) {
+    showLoginScreen();
+    return;
+  }
+
+  state.currentUser = data.session.user;
+  showCrmApp();
   await refresh();
 }
+
+db.auth.onAuthStateChange((_event, session) => {
+  state.currentUser = session?.user || null;
+
+  if (!state.currentUser) {
+    showLoginScreen();
+  }
+});
 
 init();

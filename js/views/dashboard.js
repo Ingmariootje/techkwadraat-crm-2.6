@@ -12,7 +12,7 @@ function renderDashboard(state) {
   const thisWeekAppointments = appointmentsInRange(state.appointments, thisWeekRange.start, thisWeekRange.end);
   const nextWeekAppointments = appointmentsInRange(state.appointments, nextWeekRange.start, nextWeekRange.end);
 
-  const importantNotes = state.notes.slice(0, 12);
+  const importantNotes = getDashboardCommunicationItems().slice(0, 12);
   const openAccountability = getOpenAccountabilityAppointments();
 
   return `
@@ -46,7 +46,7 @@ function renderDashboard(state) {
       <section class="panel notes-priority-panel dashboard-notes-column">
         <div class="notes-priority-header">
           <div>
-            <div class="panel-header">Laatste notities en contactmomenten</div>
+            <div class="panel-header">Laatste communicatie</div>
           </div>
         </div>
         <div class="priority-note-list">
@@ -55,6 +55,17 @@ function renderDashboard(state) {
       </section>
     </section>
   `;
+}
+
+function openDashboardAppointment(id) {
+  const appointment = state.appointments.find(item => item.id === id);
+
+  if (appointment?.date) {
+    state.selectedDate = appointment.date;
+    state.calendarMonth = new Date(`${appointment.date}T12:00:00`);
+  }
+
+  setView("agenda");
 }
 
 function dashboardEvent(appointment) {
@@ -66,7 +77,7 @@ function dashboardEvent(appointment) {
   const organizationName = getOrganizationName(appointment.organization_id);
 
   return `
-    <div class="week-event week-event-rich">
+    <div class="week-event week-event-rich" onclick="openDashboardAppointment('${appointment.id}')" style="cursor:pointer">
       <div class="date-block"><span>${day}</span><strong>${number}</strong><small>${month}</small></div>
       <div class="week-event-content">
         <div class="event-time">${cleanTime(appointment.start_time)} - ${cleanTime(appointment.end_time)}</div>
@@ -107,18 +118,67 @@ function renderAccountabilityTaskPanel(items) {
   `;
 }
 
+function getDashboardCommunicationItems() {
+  const moments = (state.contactMoments || []).map(item => ({
+    source: "contact_moments",
+    id: item.id,
+    organization_id: item.organization_id,
+    date: item.contact_date || (item.created_at ? item.created_at.slice(0, 10) : ""),
+    type: item.contact_type || "Communicatie",
+    subject: item.subject || item.contact_type || "Communicatie",
+    summary: item.summary || ""
+  }));
+
+  const notes = (state.notes || []).map(note => ({
+    source: "notes",
+    id: note.id,
+    organization_id: note.organization_id,
+    date: note.created_at ? note.created_at.slice(0, 10) : "",
+    type: "Notitie",
+    subject: "Notitie",
+    summary: note.text || ""
+  }));
+
+  return [...moments, ...notes]
+    .filter(item => item.organization_id)
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+}
+
+function openDashboardCommunication(organizationId) {
+  const organization = state.organizations.find(item => item.id === organizationId);
+  if (!organization) return;
+
+  state.view = typeToView(organization.type);
+  state.selectedRelationId = organization.id;
+  state.selectedRelationSection = "contacts";
+  state.search = "";
+  state.relationCityFilter = "alles";
+  state.relationFoundationFilter = "alles";
+
+  document.querySelectorAll(".nav-link").forEach(button => {
+    button.classList.toggle("active", button.dataset.view === state.view);
+  });
+
+  render();
+}
+
 function renderPriorityNote(note) {
   const organization = state.organizations.find(item => item.id === note.organization_id);
-  const type = organization ? organization.type : "notitie";
-  const label = organization ? typeLabel(type) : "notitie";
+  const label = note.type || (organization ? typeLabel(organization.type) : "communicatie");
+  const dateValue = note.date || "";
+  const subject = note.subject || label;
+  const summary = String(note.summary || "").trim();
+  const shortSummary = summary.slice(0, 150);
+
   return `
-    <article class="priority-note-card">
+    <article class="priority-note-card priority-note-clickable" onclick="openDashboardCommunication('${note.organization_id}')" style="cursor:pointer" tabindex="0" onkeydown="if(event.key === 'Enter'){ openDashboardCommunication('${note.organization_id}'); }">
       <div class="priority-note-topline">
         <span class="priority-note-type">${escapeHtml(label)}</span>
-        <span class="note-date">${formatDate(note.created_at ? note.created_at.slice(0, 10) : "")}</span>
+        <span class="note-date">${formatDate(dateValue)}</span>
       </div>
       <h3>${escapeHtml(getOrganizationName(note.organization_id))}</h3>
-      <p>${escapeHtml(note.text)}</p>
+      <strong class="priority-note-subject">${escapeHtml(subject)}</strong>
+      <p>${escapeHtml(shortSummary)}${summary.length > 150 ? "..." : ""}</p>
     </article>
   `;
 }

@@ -2,7 +2,7 @@ function renderRelaties(state, type) {
   const label = typeLabel(type);
   const active = state.selectedRelationId ? state.organizations.find(o => o.id === state.selectedRelationId) : null;
 
-  if (active && state.selectedRelationSection === "notes") return renderRelationNotesPage(active, type);
+  if (active && state.selectedRelationSection === "notes") return renderRelationContactsPage(active, type);
   if (active && state.selectedRelationSection === "documents") return renderRelationDocumentsPage(active, type);
   if (active && state.selectedRelationSection === "contacts") return renderRelationContactsPage(active, type);
   if (active) return renderRelationDetail(active, type);
@@ -57,7 +57,7 @@ function relationCard(org) {
       ${relationExtra}
       <p class="card-meta compact-meta">Contact: ${escapeHtml(org.contact_person) || "-"}<br>Telefoon: ${escapeHtml(org.phone) || "-"}</p>
       <div class="note-card compact-planning"><strong>${future ? "Volgende activiteit" : "Planning"}</strong><p class="card-meta">${future ? `${formatDate(future.date)} · ${escapeHtml(future.title)}` : "Nog niets gepland"}</p></div>
-      <p class="card-meta">${notes.length} notitie(s) · ${contactMoments.length} contactmoment(en) · ${documents.length} document(en)</p>
+      <p class="card-meta">${communicationItemsForOrganization(org.id).length} communicatie · ${documents.length} document(en)</p>
       <div class="card-actions"><button class="danger small-button" onclick="event.stopPropagation(); deleteRecord('organizations', '${org.id}')">Verwijderen</button></div>
     </article>`;
 }
@@ -87,10 +87,9 @@ function renderRelationDetail(org, type) {
           <p><strong>Plaats</strong><br>${escapeHtml(city) || "-"}</p>
           ${type === "school" ? `<p><strong>Stichting</strong><br>${escapeHtml(org.foundation) || "-"}</p><p><strong>Directeur</strong><br>${escapeHtml(org.director) || "-"}</p>` : ""}
         </div>
-        <div class="kpi-grid relation-kpi-grid">
+        <div class="kpi-grid relation-kpi-grid relation-kpi-grid-3">
           <div class="kpi"><strong>${appointments.length}</strong><span>Activiteiten</span></div>
-          <button type="button" class="kpi kpi-button" onclick="openRelationContacts('${org.id}')"><strong>${contactMoments.length}</strong><span>Contactmomenten</span></button>
-          <button type="button" class="kpi kpi-button" onclick="openRelationNotes('${org.id}')"><strong>${notes.length}</strong><span>Notities</span></button>
+          <button type="button" class="kpi kpi-button" onclick="openRelationContacts('${org.id}')"><strong>${communicationItemsForOrganization(org.id).length}</strong><span>Communicatie</span></button>
           <button type="button" class="kpi kpi-button" onclick="openRelationDocuments('${org.id}')"><strong>${documents.length}</strong><span>Documenten</span></button>
         </div>
         <section class="accountability-summary-card ${missingAccountability.length ? "has-missing" : ""}">
@@ -125,13 +124,11 @@ function renderRelationDetail(org, type) {
           </div>
 
           <div class="notes-action-row side-action-grid">
-            <button type="button" onclick="openContactMomentModal('${org.id}', 'Mail')">+ Mail registreren</button>
-            <button type="button" onclick="openContactMomentModal('${org.id}')">+ Contactmoment</button>
-            <button type="button" class="ghost" onclick="openNoteModal('${org.id}')">+ Notitie</button>
+            <button type="button" onclick="openCommunicationModal('${org.id}')">+ Communicatie</button>
           </div>
 
-          <div class="side-section-title">Laatste contactmomenten</div>
-          ${contactMoments.slice(0, 3).map(moment => contactMomentRow(moment, org.id)).join("") || `<p class="empty">Nog geen contactmomenten.</p>`}
+          <div class="side-section-title">Laatste communicatie</div>
+          ${communicationItemsForOrganization(org.id).slice(0, 5).map(item => communicationRow(item, org.id)).join("") || `<p class="empty">Nog geen communicatie.</p>`}
         </section>
 
         <section class="side-block side-block-separated">
@@ -173,18 +170,18 @@ function renderRelationNotesPage(org, type) {
 }
 
 function renderRelationContactsPage(org, type) {
-  const moments = state.contactMoments.filter(m => m.organization_id === org.id);
+  const communicationItems = communicationItemsForOrganization(org.id);
 
   return `
     <button class="ghost" onclick="backToRelationDetail()">← Terug naar ${typeLabel(type)}detail</button><br><br>
     <section class="notes-page-layout">
       <div class="panel notes-page-main">
         <div class="notes-page-header">
-          <div><h2>Contactgeschiedenis</h2><p class="page-subtitle">${escapeHtml(org.name)}</p></div>
-          <div class="notes-action-row"><button type="button" onclick="openContactMomentModal('${org.id}', 'Mail')">+ Mail registreren</button><button type="button" onclick="openContactMomentModal('${org.id}')">+ Contactmoment</button></div>
+          <div><h2>Communicatie</h2><p class="page-subtitle">${escapeHtml(org.name)} · mails, contactmomenten en notities</p></div>
+          <button type="button" onclick="openCommunicationModal('${org.id}')">+ Communicatie</button>
         </div>
-        <div class="notes-page-list">
-          ${moments.map(moment => contactMomentPageRow(moment)).join("") || `<p class="empty">Nog geen contactmomenten.</p>`}
+        <div class="notes-page-list communication-page-list">
+          ${communicationItems.map(item => communicationPageRow(item)).join("") || `<p class="empty">Nog geen communicatie.</p>`}
         </div>
       </div>
     </section>`;
@@ -251,12 +248,72 @@ function contactMomentPageRow(moment) {
     </article>`;
 }
 
+function communicationItemsForOrganization(organizationId) {
+  const moments = state.contactMoments
+    .filter(item => item.organization_id === organizationId)
+    .map(item => ({
+      source: "contact_moments",
+      id: item.id,
+      type: item.contact_type || "Contactmoment",
+      date: item.contact_date || (item.created_at ? item.created_at.slice(0, 10) : ""),
+      subject: item.subject || "Geen onderwerp",
+      summary: item.summary || "",
+      contactPerson: item.contact_person || "",
+      direction: item.direction || ""
+    }));
+
+  const notes = state.notes
+    .filter(item => item.organization_id === organizationId)
+    .map(item => ({
+      source: "notes",
+      id: item.id,
+      type: "Notitie",
+      date: item.created_at ? item.created_at.slice(0, 10) : "",
+      subject: "Notitie",
+      summary: item.text || "",
+      contactPerson: "",
+      direction: ""
+    }));
+
+  return [...moments, ...notes].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+}
+
+function communicationIcon(type) {
+  const value = String(type || "").toLowerCase();
+  if (value.includes("mail")) return "📧";
+  if (value.includes("telefoon")) return "📞";
+  if (value.includes("overleg")) return "💬";
+  if (value.includes("bezoek")) return "📍";
+  if (value.includes("notitie")) return "📝";
+  return "💬";
+}
+
+function communicationRow(item, orgId) {
+  return `
+    <button type="button" class="note-row note-row-large note-clickable contact-row-small" onclick="openRelationContacts('${orgId}')">
+      <div class="note-date">${communicationIcon(item.type)} ${escapeHtml(item.type)} · ${formatDate(item.date)}</div>
+      <div class="note-text"><strong>${escapeHtml(item.subject || item.type)}</strong><br>${escapeHtml(item.summary || "")}</div>
+    </button>`;
+}
+
+function communicationPageRow(item) {
+  const table = item.source === "notes" ? "notes" : "contact_moments";
+  return `
+    <article class="note-row note-row-page contact-moment-card communication-card">
+      <div class="note-date">${communicationIcon(item.type)} ${escapeHtml(item.type)} · ${formatDateLong(item.date)}</div>
+      <h3>${escapeHtml(item.subject || item.type)}</h3>
+      <p>${escapeHtml(item.summary || "")}</p>
+      ${item.contactPerson || item.direction ? `<p class="card-meta">${item.contactPerson ? `Contactpersoon: ${escapeHtml(item.contactPerson)}` : ""}${item.direction ? ` · Richting: ${escapeHtml(item.direction)}` : ""}</p>` : ""}
+      <div class="card-actions"><button class="danger small-button" onclick="deleteRecord('${table}', '${item.id}')">Verwijderen</button></div>
+    </article>`;
+}
+
 function documentRow(document) {
   return `
     <div class="document-row-small">
       <strong>${escapeHtml(document.title || document.file_name)}</strong>
       <span>${escapeHtml(document.document_type || "Document")} · ${escapeHtml(document.status || "")}</span>
-      <a href="${escapeHtml(document.file_url)}" target="_blank" rel="noopener">Openen</a>
+      <button type="button" class="ghost small-button" onclick="openDocumentFile('${escapeHtml(document.file_path)}')">Openen</button>
     </div>`;
 }
 
@@ -269,7 +326,7 @@ function documentCard(document) {
         <p class="card-meta">${escapeHtml(document.document_type || "Document")} · ${escapeHtml(document.status || "Status onbekend")}</p>
         <p class="card-meta">${formatDateLong(document.created_at ? document.created_at.slice(0,10) : "")}</p>
         <div class="card-actions">
-          <a class="button secondary" href="${escapeHtml(document.file_url)}" target="_blank" rel="noopener">Openen</a>
+          <button type="button" class="secondary small-button" onclick="openDocumentFile('${escapeHtml(document.file_path)}')">Openen</button>
           <button class="danger small-button" onclick="deleteDocument('${document.id}', '${escapeHtml(document.file_path)}')">Verwijderen</button>
         </div>
       </div>
@@ -278,7 +335,7 @@ function documentCard(document) {
 
 function openRelationDetail(id) { state.selectedRelationId = id; state.selectedRelationSection = null; render(); }
 function closeRelationDetail() { state.selectedRelationId = null; state.selectedRelationSection = null; render(); }
-function openRelationNotes(id) { state.selectedRelationId = id; state.selectedRelationSection = "notes"; render(); }
+function openRelationNotes(id) { state.selectedRelationId = id; state.selectedRelationSection = "contacts"; render(); }
 function openRelationContacts(id) { state.selectedRelationId = id; state.selectedRelationSection = "contacts"; render(); }
 function openRelationDocuments(id) { state.selectedRelationId = id; state.selectedRelationSection = "documents"; render(); }
 function backToRelationDetail() { state.selectedRelationSection = null; render(); }
@@ -334,27 +391,39 @@ function openNoteModal(organizationId) {
   });
 }
 
-function openContactMomentModal(organizationId, preferredType = "") {
+function openCommunicationModal(organizationId, preferredType = "") {
   openModal(`
     <div class="modal-backdrop"><div class="modal">
-      <div class="modal-header"><div><h2>${preferredType === 'Mail' ? 'Mail registreren' : 'Contactmoment opslaan'}</h2><p class="page-subtitle">Bij ${escapeHtml(getOrganizationName(organizationId))}. Registreer kort wat er is besproken of gemaild.</p></div><button type="button" class="close-button" onclick="closeModal()">×</button></div>
-      <form id="contact-moment-form"><div class="modal-content form-grid">
-        <select name="contact_type" class="form-select">
-          ${["Mail", "Telefoon", "Overleg", "Bezoek", "Notitie"].map(type => `<option value="${type}" ${preferredType === type ? "selected" : ""}>${type}</option>`).join("")}
-        </select>
-        <input name="contact_date" type="date" class="form-input" value="${new Date().toISOString().slice(0,10)}" required>
-        <input name="contact_person" class="form-input" placeholder="Contactpersoon">
-        <select name="direction" class="form-select">
-          <option value="">Richting onbekend</option>
-          <option value="Inkomend">Inkomend</option>
-          <option value="Uitgaand">Uitgaand</option>
-        </select>
+      <div class="modal-header"><div><h2>Communicatie registreren</h2><p class="page-subtitle">Bij ${escapeHtml(getOrganizationName(organizationId))}. Kies het soort contact en leg kort vast wat belangrijk is.</p></div><button type="button" class="close-button" onclick="closeModal()">×</button></div>
+      <form id="communication-form"><div class="modal-content form-grid">
+        <label>
+          Soort communicatie
+          <select name="contact_type" class="form-select">
+            ${["Mail", "Telefoon", "Overleg", "Bezoek", "Notitie"].map(type => `<option value="${type}" ${preferredType === type ? "selected" : ""}>${type}</option>`).join("")}
+          </select>
+        </label>
+        <label>
+          Datum
+          <input name="contact_date" type="date" class="form-input" value="${new Date().toISOString().slice(0,10)}" required>
+        </label>
+        <label>
+          Contactpersoon
+          <input name="contact_person" class="form-input" placeholder="Contactpersoon">
+        </label>
+        <label>
+          Richting
+          <select name="direction" class="form-select">
+            <option value="">Richting onbekend</option>
+            <option value="Inkomend">Inkomend</option>
+            <option value="Uitgaand">Uitgaand</option>
+          </select>
+        </label>
         <input name="subject" class="form-input full" placeholder="Onderwerp" required>
-        <textarea name="summary" class="full" placeholder="Korte samenvatting of plak hier de belangrijkste tekst uit de mail..." required></textarea>
+        <textarea name="summary" class="full" placeholder="Korte samenvatting, notitie of belangrijkste tekst uit de mail..." required></textarea>
       </div><div class="modal-footer"><button type="button" class="ghost" onclick="closeModal()">Annuleren</button><button type="submit">Opslaan</button></div></form>
     </div></div>`);
 
-  document.getElementById("contact-moment-form").addEventListener("submit", async event => {
+  document.getElementById("communication-form").addEventListener("submit", async event => {
     event.preventDefault();
     const formData = new FormData(event.target);
     const payload = {
@@ -367,9 +436,13 @@ function openContactMomentModal(organizationId, preferredType = "") {
       summary: formData.get("summary")
     };
     const { error } = await db.from("contact_moments").insert(payload);
-    if (error) { alert("Contactmoment toevoegen mislukt. Controleer of het SQL-script is uitgevoerd."); console.error(error); return; }
+    if (error) { alert("Communicatie toevoegen mislukt. Controleer of het SQL-script is uitgevoerd."); console.error(error); return; }
     closeModal(); await refresh();
   });
+}
+
+function openContactMomentModal(organizationId, preferredType = "") {
+  openCommunicationModal(organizationId, preferredType);
 }
 
 function openDocumentModal(organizationId) {
@@ -416,9 +489,6 @@ function openDocumentModal(organizationId) {
       return;
     }
 
-    const publicUrlResult = db.storage.from("crm-documents").getPublicUrl(filePath);
-    const fileUrl = publicUrlResult.data.publicUrl;
-
     const payload = {
       organization_id: organizationId,
       title: formData.get("title"),
@@ -426,7 +496,7 @@ function openDocumentModal(organizationId) {
       status: formData.get("status"),
       file_name: file.name,
       file_path: filePath,
-      file_url: fileUrl
+      file_url: null
     };
 
     const { error } = await db.from("documents").insert(payload);
@@ -438,6 +508,25 @@ function openDocumentModal(organizationId) {
 
     closeModal(); await refresh();
   });
+}
+
+async function openDocumentFile(filePath) {
+  if (!filePath) {
+    alert("Geen bestand gevonden bij dit document.");
+    return;
+  }
+
+  const { data, error } = await db.storage
+    .from("crm-documents")
+    .createSignedUrl(filePath, 60 * 60);
+
+  if (error || !data?.signedUrl) {
+    alert("Document openen mislukt. Controleer of je bent ingelogd en of het bestand bestaat.");
+    console.error(error);
+    return;
+  }
+
+  window.open(data.signedUrl, "_blank", "noopener");
 }
 
 async function deleteDocument(id, filePath) {
