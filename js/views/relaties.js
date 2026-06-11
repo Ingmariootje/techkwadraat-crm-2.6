@@ -78,7 +78,7 @@ function renderRelationDetail(org, type) {
     <button class="ghost" onclick="closeRelationDetail()">← Terug naar ${typePluralLabel(type)}</button><br><br>
     <section class="detail-layout detail-layout-compact">
       <div class="panel relation-main-panel">
-        <div class="detail-title"><div><h2>${escapeHtml(org.name)}</h2><p class="page-subtitle">${typeLabel(type)}detail</p></div><span class="event-label ${future.length ? "label-green" : "label-orange"}">${future.length ? "ingepland" : "nog plannen"}</span></div>
+        <div class="detail-title"><div><h2>${escapeHtml(org.name)}</h2><p class="page-subtitle">${typeLabel(type)}detail</p></div><div><button type="button" class="ghost small-button" onclick="openEditOrganizationModal(\'${org.id}\')">✏️ Bewerken</button></div><span class="event-label ${future.length ? "label-green" : "label-orange"}">${future.length ? "ingepland" : "nog plannen"}</span></div>
         <div class="contact-summary contact-summary-compact">
           <p><strong>Contactpersoon</strong><br>${escapeHtml(org.contact_person) || "-"}</p>
           <p><strong>Telefoon</strong><br>${org.phone ? `<a href="tel:${phoneHref(org.phone)}">${escapeHtml(org.phone)}</a>` : "-"}</p>
@@ -551,4 +551,36 @@ function cityFromAddress(address) {
   if (!address) return "";
   const parts = String(address).split(",").map(part => part.trim()).filter(Boolean);
   return parts.length > 1 ? parts[parts.length - 1] : "";
+}
+
+
+function openEditOrganizationModal(id){
+  const org = state.organizations.find(o => o.id === id);
+  if(!org) return;
+  const name = prompt('Naam', org.name || '');
+  if(name === null) return;
+  const contact = prompt('Contactpersoon', org.contact_person || '');
+  if(contact === null) return;
+  const phone = prompt('Telefoon', org.phone || '');
+  if(phone === null) return;
+  const email = prompt('E-mail', org.email || '');
+  if(email === null) return;
+
+  const updated = {
+    ...org,
+    name,
+    contact_person: contact,
+    phone,
+    email
+  };
+
+  if(window.db && db.updateOrganization){
+    db.updateOrganization(updated).then(loadData);
+  } else {
+    const idx = state.organizations.findIndex(o => o.id === id);
+    if(idx >= 0){
+      state.organizations[idx] = updated;
+      render();
+    }
+  }
 }
